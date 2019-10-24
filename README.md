@@ -16,16 +16,6 @@ make clean
 build
 ```
 
-## Test
-### Linux
-```
-make test
-```
-### Windows
-```
-test
-```
-
 ## Usage
 ```
 img2pdf <directory that contains images> [<directory2 that contains images> ...]
