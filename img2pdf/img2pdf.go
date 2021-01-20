@@ -23,7 +23,8 @@ func (g Generator) CreatePDF(name string, imageFiles []string) error {
 	for i, file := range imageFiles {
 		width, height := getImageDimension(file)
 		pdf.AddPageFormat("", gofpdf.SizeType{Wd: float64(width), Ht: float64(height)})
-		pdf.Image(file, 0, 0, float64(width), float64(height), false, "", 0, "")
+		pdf.ImageOptions(file, 0, 0, float64(width), float64(height), false,
+			gofpdf.ImageOptions{}, 0, "")
 
 		// trigger event handler
 		if g.imageProcessingEvent != nil {
