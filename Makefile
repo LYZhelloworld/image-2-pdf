@@ -1,17 +1,16 @@
-GO_BUILD := go build
 GO_ENV = GO111MODULE=on
-BINDIR := $(PWD)/bin
-CMDDIR := $(PWD)/cmd
-MAIN = main.go
-BIN = image2pdf
+MAIN = cmd/image2pdf/main.go
 
-.PHONY: all
+.PHONY: all build build_windows build_linux clean
 all: build
 
-.PHONY: build
-build: $(CMDDIR)/$(BIN)/$(MAIN)
-	$(GO_ENV) $(GO_BUILD) -o $(BINDIR)/$(BIN) $(CMDDIR)/$(BIN)/$(MAIN)
+build: build_windows build_linux
 
-.PHONY: clean
+build_windows: $(MAIN)
+	$(GO_ENV) GOOS=windows GOARCH=amd64 go build -o bin/image2pdf.exe $(MAIN)
+
+build_linux: $(MAIN)
+	$(GO_ENV) GOOS=linux GOARCH=amd64 go build -o bin/image2pdf $(MAIN)
+
 clean:
-	rm -rf $(BINDIR)
+	rm -rf bin/
