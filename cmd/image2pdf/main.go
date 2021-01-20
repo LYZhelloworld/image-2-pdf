@@ -2,92 +2,54 @@ package main
 
 import (
 	"fmt"
-	"image"
+	"image2pdf/fileutils"
+	"image2pdf/img2pdf"
 	"os"
-
-	"github.com/jung-kurt/gofpdf"
-
-	_ "image/jpeg"
-
-	_ "image/png"
 	"path/filepath"
-	"sort"
-	"strings"
 )
 
-func createPDF(pdfname string, files []string) error {
-	pdf := gofpdf.New("P", "pt", "", "")
-	for i, file := range files {
-		width, height := getImageDimension(file)
-		pdf.AddPageFormat("", gofpdf.SizeType{Wd: width, Ht: height})
-		pdf.Image(file, 0, 0, width, height, false, "", 0, "")
-		fmt.Printf("%d: %s\n", i+1, filepath.Base(file))
-	}
-	return pdf.OutputFileAndClose(pdfname)
-}
-
-func getImageDimension(file string) (float64, float64) {
-	f, err := os.Open(file)
-	if err != nil {
-		return 0, 0
-	}
-	defer f.Close()
-
-	image, _, err := image.DecodeConfig(f)
-	if err != nil {
-		return 0, 0
-	}
-	return float64(image.Width), float64(image.Height)
-}
-
-func getImages(path string) []string {
-	result := make([]string, 0)
-	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
-		if info.IsDir() {
-			return nil
-		}
-
-		if strings.HasSuffix(strings.ToLower(info.Name()), ".jpg") ||
-			strings.HasSuffix(strings.ToLower(info.Name()), ".png") {
-			result = append(result, path)
-		}
-
-		return nil
-	})
-	if err != nil {
-		fmt.Println(fmt.Errorf("An error occurred when walking directory: %s\n%w", path, err))
-		return result
-	}
-
-	sort.Strings(result)
-	return result
-}
-
-func getPDFName(path string) string {
-	return filepath.Join(filepath.Dir(path), filepath.Base(path)+".pdf")
-}
+const usage = `Usage: %s <directory that contains images> [<directory2 that contains images> ...]
+You can drag and drop folders onto the script.
+`
 
 func main() {
 	if len(os.Args) > 1 {
 		for _, directory := range os.Args[1:] {
-			images := getImages(directory)
-			if len(images) > 0 {
-				pdf := getPDFName(directory)
-				err := createPDF(pdf, images)
-				if err == nil {
-					fmt.Printf("PDF file created: %s with %d image file(s).\n",
-						pdf, len(images))
-				} else {
-					fmt.Println(fmt.Errorf("An error occurred when creating PDF file: %s\n%w",
-						pdf, err))
-				}
-			}
+			processDirectory(directory)
 		}
 		fmt.Print("Press any key to continue...")
-		fmt.Scanln()
+		_, _ = fmt.Scanln()
 	} else {
-		fmt.Println(fmt.Errorf(
-			"Usage: %s <directory that contains images> [<directory2 that contains images> ...]\n"+
-				"You can drag and drop folders onto the script.", os.Args[0]))
+		printUsage()
 	}
+}
+
+func printError(format string, a ...interface{}) {
+	_, _ = fmt.Fprintf(os.Stderr, format, a...)
+}
+
+func processDirectory(directory string) {
+	images, err := fileutils.GetImages(directory)
+	if err != nil {
+		printError(err.Error())
+		return
+	}
+
+	if len(images) > 0 {
+		pdf := fileutils.GeneratePDFName(directory)
+		gen := img2pdf.Generator{}
+		gen.ImageProcessingEvent(func(id int, filename string) {
+			fmt.Printf("%d: %s\n", id+1, filepath.Base(filename))
+		})
+		err := gen.CreatePDF(pdf, images)
+		if err != nil {
+			printError("An error occurred when creating PDF file: %s\n%v\n", pdf, err)
+			return
+		}
+		fmt.Printf("PDF file created: %s with %d image file(s).\n", pdf, len(images))
+	}
+}
+
+func printUsage() {
+	printError(usage, os.Args[0])
 }
